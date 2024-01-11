@@ -69,21 +69,27 @@ pub unsafe fn run() {
         eprintln!("CLOSE");
     }
 
-    // TODO: Listen thread
     std::thread::spawn(move || {
-        println!("hello, world!");
         let h_console = GetStdHandle(STD_OUTPUT_HANDLE).unwrap();
 
         let mut bytes_read = 0;
         let mut bytes_write = 0;
         let mut buffer = vec![0u8; 512];
 
-        ReadFile(pipe_in, Some(&mut buffer), Some(&mut bytes_read), None).unwrap();
-        WriteFile(h_console, Some(&mut buffer), Some(&mut bytes_write), None).unwrap();
+        loop {
+            let res = ReadFile(pipe_in, Some(&mut buffer), Some(&mut bytes_read), None);
 
-        while bytes_read > 0 {
-            ReadFile(pipe_in, Some(&mut buffer), Some(&mut bytes_read), None).unwrap();
-            WriteFile(h_console, Some(&mut buffer), Some(&mut bytes_write), None).unwrap();
+            WriteFile(
+                h_console,
+                Some(&mut buffer[..bytes_read as usize]),
+                Some(&mut bytes_write),
+                None,
+            )
+            .unwrap();
+
+            if res.is_err() && bytes_read == 0 {
+                break;
+            }
         }
     });
 
